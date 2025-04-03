@@ -15,7 +15,6 @@ class FavoritesActivity : AppCompatActivity() {
     private lateinit var starButton: ImageButton
     private lateinit var historyButton: ImageButton
     private lateinit var settingsButton: ImageButton
-    private lateinit var micButton: ImageButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,13 +29,10 @@ class FavoritesActivity : AppCompatActivity() {
     }
 
     private fun initializeViews() {
-        recyclerView = findViewById(R.id.favoritesRecyclerView)
-        emptyView = findViewById(R.id.emptyView)
         homeButton = findViewById(R.id.homeButton)
         starButton = findViewById(R.id.starButton)
         historyButton = findViewById(R.id.historyButton)
         settingsButton = findViewById(R.id.settingsButton)
-        micButton = findViewById(R.id.micButton)
     }
 
     private fun setupRecyclerView() {
@@ -51,7 +47,6 @@ class FavoritesActivity : AppCompatActivity() {
         }
 
         starButton.setOnClickListener {
-            // 현재 화면이므로 아무 동작 하지 않음
         }
 
         historyButton.setOnClickListener {
@@ -60,10 +55,6 @@ class FavoritesActivity : AppCompatActivity() {
 
         settingsButton.setOnClickListener {
             // TODO: 설정 화면으로 이동
-        }
-
-        micButton.setOnClickListener {
-            // TODO: 음성 인식 시작
         }
     }
 

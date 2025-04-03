@@ -1,118 +1,106 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="#F5F5F5">
 
     <!-- 상단 타이틀 -->
     <TextView
-        android:id="@+id/titleText"
+        android:id="@+id/subtitleText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="즐겨찾기"
-        android:textColor="@color/black"
+        android:layout_marginTop="8dp"
+        android:text="자주 사용하는 문구를 즐겨찾기에 추가하세요."
+        android:textColor="#000000"
+        android:textSize="12sp"
+        app:layout_constraintStart_toStartOf="@+id/subtitleText2"
+        app:layout_constraintTop_toBottomOf="@+id/subtitleText2" />
+
+    <TextView
+        android:id="@+id/subtitleText2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="30dp"
+        android:layout_marginTop="39dp"
+        android:text="Sing wave"
+        android:textColor="#000000"
         android:textSize="24sp"
-        android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginStart="20dp"/>
+        app:layout_constraintTop_toTopOf="parent" />
 
     <!-- 즐겨찾기 목록 -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/favoritesRecyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="20dp"
-        android:layout_marginHorizontal="20dp"
-        app:layout_constraintTop_toBottomOf="@id/titleText"
-        app:layout_constraintBottom_toTopOf="@id/bottomNavigation"
-        android:clipToPadding="false"
-        android:paddingBottom="20dp"/>
 
-    <!-- 즐겨찾기가 없을 때 보여줄 뷰 -->
+    <!-- 즐겨찾기 항목 (예시) -->
     <LinearLayout
-        android:id="@+id/emptyView"
-        android:layout_width="wrap_content"
+        android:id="@+id/favoriteItem"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="center"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <ImageView
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:src="@drawable/ic_star"
-            android:alpha="0.5"/>
+        android:padding="16dp"
+        android:background="@android:color/white"
+        android:elevation="4dp"
+        app:layout_constraintTop_toBottomOf="@id/subtitleText"
+        app:layout_constraintBottom_toTopOf="@id/bottomNavigation">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="저장된 즐겨찾기가 없습니다"
-            android:textColor="@color/black"
-            android:textSize="16sp"
-            android:layout_marginTop="16dp"/>
+            android:text="안녕하세요. 저는 김주용입니다."
+            android:textColor="#000000"
+            android:textSize="16sp"/>
+
     </LinearLayout>
+
+    <!-- 즐겨찾기가 없을 때 보여줄 뷰 -->
 
     <!-- 하단 네비게이션 -->
     <LinearLayout
         android:id="@+id/bottomNavigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@color/white"
+        android:gravity="center"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:gravity="center"
-        android:background="@color/white"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <ImageButton
             android:id="@+id/homeButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="60dp"
             android:layout_weight="1"
-            android:src="@drawable/ic_home"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="홈"/>
+            android:contentDescription="홈"
+            android:src="@drawable/ic_home" />
 
         <ImageButton
             android:id="@+id/starButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:src="@drawable/ic_star"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="즐겨찾기"/>
-
-        <ImageButton
-            android:id="@+id/micButton"
-            android:layout_width="60dp"
             android:layout_height="60dp"
-            android:src="@drawable/ic_mic"
-            android:background="@drawable/circle_background"
-            android:layout_marginHorizontal="16dp"
-            android:contentDescription="마이크"/>
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="즐겨찾기"
+            android:src="@drawable/ic_on_star" />
 
         <ImageButton
             android:id="@+id/historyButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="60dp"
             android:layout_weight="1"
-            android:src="@drawable/ic_history"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="기록"/>
+            android:contentDescription="기록"
+            android:src="@drawable/ic_history" />
 
         <ImageButton
             android:id="@+id/settingsButton"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="60dp"
             android:layout_weight="1"
-            android:src="@drawable/ic_settings"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="설정"/>
+            android:contentDescription="설정"
+            android:src="@drawable/ic_calendar" />
     </LinearLayout>
 
-</androidx.constraintlayout.widget.ConstraintLayout> 
+</androidx.constraintlayout.widget.ConstraintLayout>

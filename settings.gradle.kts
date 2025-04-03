@@ -16,8 +16,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://dl.google.com/dl/android/maven2/") // MediaPipe 저장소
     }
 }
+
 
 rootProject.name = "androidLab"
 include(":app")
