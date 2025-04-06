@@ -6,11 +6,12 @@ import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
 
 
-class HomeActivity : AppCompatActivity() {
+class HistoryActivity : AppCompatActivity() {
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_home)
+        setContentView(R.layout.activity_history)
 
         // 즐겨찾기 버튼 클릭 리스너 추가
         val starButton: ImageButton = findViewById(R.id.starButton)
@@ -20,14 +21,12 @@ class HomeActivity : AppCompatActivity() {
         }
 
         // 기록 버튼 클릭 리스너 추가
-        val historyButton: ImageButton = findViewById(R.id.historyButton)
-        historyButton.setOnClickListener {
-            startActivity(Intent(this, HistoryActivity::class.java))
+        val homeButton: ImageButton = findViewById(R.id.homeButton)
+        homeButton.setOnClickListener {
+            startActivity(Intent(this, HomeActivity::class.java))
             finish()
         }
+
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-    }
 }
