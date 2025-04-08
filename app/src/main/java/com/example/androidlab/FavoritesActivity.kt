@@ -27,6 +27,12 @@ class FavoritesActivity : AppCompatActivity() {
             finish()
         }
 
+        // 캘린터 버튼 클릭 리스너 추가
+        val calendarButton: ImageButton = findViewById(R.id.settingsButton)
+        calendarButton.setOnClickListener {
+            startActivity(Intent(this, CalendarActivity::class.java))
+            finish()
+        }
     }
 
 }

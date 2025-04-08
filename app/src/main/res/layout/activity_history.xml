@@ -77,16 +77,29 @@
                         android:src="@drawable/ic_voice" />
                 </LinearLayout>
 
-                <!-- 시간 표시 TextView -->
-                <TextView
-                    android:layout_width="wrap_content"
+                <!-- 시간 표시 TextView와 별 아이콘을 오른쪽에 배치 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="end"
                     android:layout_marginTop="4dp"
-                    android:layout_marginRight="8dp"
-                    android:layout_gravity="end"
-                    android:text="2025년 3월 13일 1:06"
-                    android:textColor="#888888"
-                    android:textSize="12sp" />
+                    android:layout_marginRight="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2025년 3월 13일 1:06"
+                        android:textColor="#888888"
+                        android:textSize="12sp" />
+
+                    <ImageButton
+                        android:id="@+id/imageButton"
+                        android:layout_width="25dp"
+                        android:layout_height="25dp"
+                        android:layout_marginStart="8dp"
+                        app:srcCompat="@drawable/ic_star_his" />
+                </LinearLayout>
             </LinearLayout>
 
             <!-- 추가 항목 예시 -->
@@ -122,16 +135,29 @@
                         android:src="@drawable/ic_voice" />
                 </LinearLayout>
 
-                <!-- 시간 표시 TextView -->
-                <TextView
-                    android:layout_width="wrap_content"
+                <!-- 시간 표시 TextView와 별 아이콘을 오른쪽에 배치 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="end"
                     android:layout_marginTop="4dp"
-                    android:layout_marginRight="8dp"
-                    android:layout_gravity="end"
-                    android:text="2025년 3월 13일 1:07"
-                    android:textColor="#888888"
-                    android:textSize="12sp" />
+                    android:layout_marginRight="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2025년 3월 13일 1:07"
+                        android:textColor="#888888"
+                        android:textSize="12sp" />
+
+                    <ImageButton
+                        android:id="@+id/imageButton2"
+                        android:layout_width="25dp"
+                        android:layout_height="25dp"
+                        android:layout_marginStart="8dp"
+                        app:srcCompat="@drawable/ic_star_his" />
+                </LinearLayout>
             </LinearLayout>
 
             <!-- 더 많은 항목 추가 가능 -->
