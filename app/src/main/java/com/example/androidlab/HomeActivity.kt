@@ -45,21 +45,18 @@ class HomeActivity : AppCompatActivity() {
         val starButton: ImageButton = findViewById(R.id.starButton)
         starButton.setOnClickListener {
             startActivity(Intent(this, FavoritesActivity::class.java))
-            finish()
         }
 
         // 기록 버튼 클릭 리스너 추가
         val historyButton: ImageButton = findViewById(R.id.historyButton)
         historyButton.setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
-            finish()
         }
 
         // 캘린터 버튼 클릭 리스너 추가
         val calendarButton: ImageButton = findViewById(R.id.settingsButton)
         calendarButton.setOnClickListener {
             startActivity(Intent(this, CalendarActivity::class.java))
-            finish()
         }
     }
 
@@ -104,7 +101,7 @@ class HomeActivity : AppCompatActivity() {
         cameraInput = CameraInput(this@HomeActivity)
         cameraInput.setNewFrameListener { hands.send(it) }
 
-        glSurfaceView = SolutionGlSurfaceView(this@HomeActivity, hands.glContext, 
+        glSurfaceView = SolutionGlSurfaceView(this@HomeActivity, hands.glContext,
             hands.glMajorVersion)
         glSurfaceView.setSolutionResultRenderer(HandsResultGlRenderer())
         glSurfaceView.setRenderInputImage(true)
