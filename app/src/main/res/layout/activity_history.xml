@@ -94,11 +94,12 @@
                         android:textSize="12sp" />
 
                     <ImageButton
-                        android:id="@+id/imageButton"
+                        android:background="@drawable/bg_edittext_rounded"
+                        android:id="@+id/imageButton1"
                         android:layout_width="25dp"
                         android:layout_height="25dp"
                         android:layout_marginStart="8dp"
-                        app:srcCompat="@drawable/ic_star_his" />
+                        app:srcCompat="@drawable/ic_record" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -152,11 +153,12 @@
                         android:textSize="12sp" />
 
                     <ImageButton
+                        android:background="@drawable/bg_edittext_rounded"
                         android:id="@+id/imageButton2"
                         android:layout_width="25dp"
                         android:layout_height="25dp"
                         android:layout_marginStart="8dp"
-                        app:srcCompat="@drawable/ic_star_his" />
+                        app:srcCompat="@drawable/ic_record" />
                 </LinearLayout>
             </LinearLayout>
 

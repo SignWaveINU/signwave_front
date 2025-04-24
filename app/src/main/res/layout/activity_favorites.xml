@@ -44,77 +44,7 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <!-- 즐겨찾기 항목 (예시) -->
-            <LinearLayout
-                android:layout_width="343dp"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:elevation="4dp"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:gravity="center_vertical"
-                    android:background="@drawable/bg_edittext_rounded"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:id="@+id/textView"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="16dp"
-                        android:text="안녕하세요. 저는 김주용입니다."
-                        android:textColor="#000000"
-                        android:textSize="16sp" />
-
-                    <ImageButton
-                        android:id="@+id/playButton"
-                        android:layout_width="56dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginStart="8dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="재생"
-                        android:src="@drawable/ic_voice" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- 추가 항목 예시 -->
-            <LinearLayout
-                android:layout_width="343dp"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:elevation="4dp"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:gravity="center_vertical"
-                    android:background="@drawable/bg_edittext_rounded"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:id="@+id/textView2"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="16dp"
-                        android:text="감기에 걸렸어요."
-                        android:textColor="#000000"
-                        android:textSize="16sp" />
-
-                    <ImageButton
-                        android:id="@+id/playButton2"
-                        android:layout_width="56dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginStart="8dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="재생"
-                        android:src="@drawable/ic_voice" />
-                </LinearLayout>
-            </LinearLayout>
+            <!-- 즐겨찾기 항목이 추가될 곳 -->
 
             <LinearLayout
                 android:layout_width="343dp"
@@ -124,7 +54,6 @@
                 android:orientation="horizontal"
                 android:layout_marginTop="5dp"
                 android:layout_marginBottom="20dp">
-
                     <ImageButton
                         android:id="@+id/addButton"
                         android:layout_width="match_parent"
