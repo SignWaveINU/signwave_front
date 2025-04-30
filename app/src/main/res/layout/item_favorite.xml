@@ -13,6 +13,14 @@
         android:background="@drawable/bg_edittext_rounded"
         android:padding="8dp">
 
+        <ImageButton
+            android:id="@+id/deleteButton"
+            android:layout_width="48dp"
+            android:layout_height="match_parent"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="삭제"
+            android:src="@drawable/ic_remove" />
+
         <TextView
             android:id="@+id/editText"
             android:layout_width="0dp"
@@ -25,12 +33,10 @@
 
         <ImageButton
             android:id="@+id/playButton"
-            android:layout_width="56dp"
+            android:layout_width="48dp"
             android:layout_height="match_parent"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="재생"
             android:src="@drawable/ic_voice" />
     </LinearLayout>
 </LinearLayout>
-
-

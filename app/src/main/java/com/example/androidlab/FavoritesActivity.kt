@@ -93,11 +93,19 @@ class FavoritesActivity : AppCompatActivity() {
         val newItemLayout = layoutInflater.inflate(R.layout.item_favorite, favoritesLayout, false)
         val textView: TextView = newItemLayout.findViewById(R.id.editText)
         val playButton: ImageButton = newItemLayout.findViewById(R.id.playButton)
+        val deleteButton: ImageButton = newItemLayout.findViewById(R.id.deleteButton)
 
         textView.text = text
         textView.isEnabled = false
         playButton.setOnClickListener {
             speakOut(text)
+        }
+
+
+        // 삭제 버튼 클릭 시: 레이아웃에서 제거 + SharedPreferences에서 제거
+        deleteButton.setOnClickListener {
+            favoritesLayout.removeView(newItemLayout) // UI에서 제거
+            removeFavorite(text)                      // SharedPreferences에서 제거
         }
 
         favoritesLayout.addView(newItemLayout)
@@ -123,6 +131,12 @@ class FavoritesActivity : AppCompatActivity() {
 
     private fun speakOut(text: String) {
         textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+    }
+
+    private fun removeFavorite(text: String) {
+        val favorites = sharedPreferences.getStringSet("favorites", mutableSetOf())?.toMutableSet() ?: return
+        favorites.remove(text)
+        sharedPreferences.edit().putStringSet("favorites", favorites).apply()
     }
 
     override fun onDestroy() {

@@ -20,6 +20,15 @@ class CalendarActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_calendar)
 
+        // 뷰 초기화
+        calendarView = findViewById(R.id.calendarView)
+        reservationText = findViewById(R.id.reservationText)
+
+        // 예약 정보 불러오기
+        val sharedPref = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+        val savedReservation = sharedPref.getString("reservation", "")
+        reservationText.text = savedReservation // 저장된 예약 텍스트를 설정
+
         // 네비게이션 버튼 설정
         val homeButton = findViewById<ImageButton>(R.id.homeButton)
         val starButton = findViewById<ImageButton>(R.id.starButton)
@@ -36,10 +45,6 @@ class CalendarActivity : AppCompatActivity() {
         historyButton.setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
         }
-
-        // 뷰 초기화
-        calendarView = findViewById(R.id.calendarView)
-        reservationText = findViewById(R.id.reservationText)
 
         // 캘린더 날짜 선택 리스너 설정
         calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
@@ -63,12 +68,22 @@ class CalendarActivity : AppCompatActivity() {
             val hour = timePicker.hour
             val minute = timePicker.minute
             val timeString = String.format("%02d:%02d", hour, minute)
-            
-            if (hospital.isNotEmpty()) {
-                reservationText.text = "$selectedDate $timeString $hospital 예약"
+
+            val finalText = if (hospital.isNotEmpty()) {
+                "$selectedDate $timeString $hospital 예약"
             } else {
-                reservationText.text = "$selectedDate $timeString 예약"
+                "$selectedDate $timeString 예약"
             }
+
+            reservationText.text = finalText
+
+            // ✅ 텍스트를 설정한 다음에 저장!
+            val sharedPref = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+            with (sharedPref.edit()) {
+                putString("reservation", finalText)
+                apply()
+            }
+
             dialog.dismiss()
         }
 

@@ -36,8 +36,8 @@ android {
 }
 
 dependencies {
-    implementation ("com.google.mediapipe:solution-core:latest.release")
-    implementation ("com.google.mediapipe:hands:latest.release")
+    implementation ("com.google.mediapipe:solution-core:0.10.9")
+    implementation ("com.google.mediapipe:hands:0.10.9")
     implementation ("com.karumi:dexter:6.2.3")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
