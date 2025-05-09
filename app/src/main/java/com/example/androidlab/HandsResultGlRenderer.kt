@@ -47,10 +47,14 @@ class HandsResultGlRenderer : ResultGlRenderer<HandsResult?> {
                 result.multiHandLandmarks()[i].landmarkList,
                 if (isLeftHand) LEFT_HAND_CONNECTION_COLOR else RIGHT_HAND_CONNECTION_COLOR
             )
-            for(ind in result.multiHandLandmarks()[i].landmarkList.indices) {
-                val lm = result.multiHandLandmarks()[i].landmarkList[ind]
-                Log.d(TAG, "LandMark[$ind] | x : ${lm.x}, y : ${lm.y}, z : ${lm.z}")
+            val landmarkList = result.multiHandLandmarks()[i].landmarkList
+            val coords = mutableListOf<Float>()
+            for (lm in landmarkList) {
+                coords.add(lm.x)
+                coords.add(lm.y)
+                coords.add(lm.z)
             }
+            Log.d(TAG, "sequence: $coords")
             for (landmark in result.multiHandLandmarks()[i].landmarkList) {
                 // Draws the landmark.
                 drawCircle(
@@ -58,8 +62,7 @@ class HandsResultGlRenderer : ResultGlRenderer<HandsResult?> {
                     landmark.y,
                     if (isLeftHand) LEFT_HAND_LANDMARK_COLOR else RIGHT_HAND_LANDMARK_COLOR
                 )
-                //Log.d(TAG, "LandMark | x : ${landmark.x}, y : ${landmark.y}, z : ${landmark.z}")
-                // Draws a hollow circle around the landmark.
+
                 drawHollowCircle(
                     landmark.x,
                     landmark.y,
