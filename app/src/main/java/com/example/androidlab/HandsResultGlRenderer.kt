@@ -2,12 +2,17 @@ package com.example.androidlab
 
 import android.opengl.GLES20
 import android.util.Log
+import api.RetrofitClient
 import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.mediapipe.solutioncore.ResultGlRenderer
 import com.google.mediapipe.solutions.hands.Hands
 import com.google.mediapipe.solutions.hands.HandsResult
+
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class HandsResultGlRenderer : ResultGlRenderer<HandsResult?> {
     private var program = 0
@@ -41,22 +46,31 @@ class HandsResultGlRenderer : ResultGlRenderer<HandsResult?> {
         GLES20.glUniformMatrix4fv(projectionMatrixHandle, 1, false, projectionMatrix, 0)
         GLES20.glLineWidth(CONNECTION_THICKNESS)
         val numHands = result.multiHandLandmarks().size
+
+        // 손들의 랜드마크 데이터를 수집할 리스트
+        val landmarkSequences = mutableListOf<List<Float>>()
+
         for (i in 0 until numHands) {
             val isLeftHand = result.multiHandedness()[i].label == "Left"
-            drawConnections(
-                result.multiHandLandmarks()[i].landmarkList,
-                if (isLeftHand) LEFT_HAND_CONNECTION_COLOR else RIGHT_HAND_CONNECTION_COLOR
-            )
+
+            // 각 손의 랜드마크 좌표를 담을 리스트
+            val handLandmarks = mutableListOf<Float>()
+
             val landmarkList = result.multiHandLandmarks()[i].landmarkList
-            val coords = mutableListOf<Float>()
             for (lm in landmarkList) {
-                coords.add(lm.x)
-                coords.add(lm.y)
-                coords.add(lm.z)
+                handLandmarks.add(lm.x)
+                handLandmarks.add(lm.y)
+                handLandmarks.add(lm.z)
             }
-            Log.d(TAG, "sequence: $coords")
-            for (landmark in result.multiHandLandmarks()[i].landmarkList) {
-                // Draws the landmark.
+
+            // 이 데이터를 'LandmarkData' 형식으로 변환
+            landmarkSequences.add(handLandmarks) // 각 손의 랜드마크 좌표가 리스트로 들어갑니다.
+
+            // 로그로 확인
+            Log.d(TAG, "Hand $i sequence: $handLandmarks")
+
+            // 랜드마크를 화면에 그리기
+            for (landmark in landmarkList) {
                 drawCircle(
                     landmark.x,
                     landmark.y,

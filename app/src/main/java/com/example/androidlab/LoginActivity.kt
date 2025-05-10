@@ -8,6 +8,13 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import api.LoginApi
+import api.LoginRequest
+import api.LoginResponse
+import api.RetrofitClient
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class LoginActivity : AppCompatActivity() {
     private lateinit var backButton: ImageButton
@@ -58,18 +65,13 @@ class LoginActivity : AppCompatActivity() {
             val email = emailInput.text.toString()
             val password = passwordInput.text.toString()
 
-            if (email.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "이메일과 비밀번호를 입력해주세요", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+            if (email.isEmpty()) {
+                showToast("이메일을 입력해주세요")
+            } else if (password.isEmpty()) {
+                showToast("비밀번호를 입력해주세요")
+            } else {
+                loginUser(email, password)
             }
-
-            // TODO: 실제 로그인 로직 구현
-            Toast.makeText(this, "로그인 성공!", Toast.LENGTH_SHORT).show()
-            
-            // HomeActivity로 이동
-            val intent = Intent(this, HomeActivity::class.java)
-            startActivity(intent)
-            finish() // 현재 액티비티 종료
         }
 
         forgotPassword.setOnClickListener {
@@ -78,13 +80,42 @@ class LoginActivity : AppCompatActivity() {
         }
 
         googleLoginButton.setOnClickListener {
-            // TODO: Google 로그인 구현
-            Toast.makeText(this, "Google 로그인", Toast.LENGTH_SHORT).show()
+            showToast("Google 계정으로 로그인")
         }
 
         signupButton.setOnClickListener {
-            val intent = Intent(this, RegisterActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, RegisterActivity::class.java))
+            finish()
         }
+    }
+
+    private fun loginUser(email: String, password: String) {
+        val loginApi = RetrofitClient.instance.create(LoginApi::class.java)
+        val loginRequest = LoginRequest(email, password)
+
+        // Retrofit의 비동기 콜백을 사용하여 로그인 처리
+        loginApi.login(loginRequest).enqueue(object : Callback<LoginResponse> {
+            override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
+                if (response.isSuccessful) {
+                    val token = response.body()?.token
+                    showToast("로그인 성공! 토큰: $token")
+
+                    // HomeActivity로 이동
+                    val intent = Intent(this@LoginActivity, HomeActivity::class.java)
+                    startActivity(intent)
+                    finish()
+                } else {
+                    showToast("로그인 실패: ${response.errorBody()?.string()}")
+                }
+            }
+
+            override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
+                showToast("로그인 오류: ${t.message}")
+            }
+        })
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 } 

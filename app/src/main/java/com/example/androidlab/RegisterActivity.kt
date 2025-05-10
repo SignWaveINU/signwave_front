@@ -1,13 +1,18 @@
 package com.example.androidlab
 
+import RegisterApi
+import RegisterRequest
+import RegisterResponse
 import android.content.Intent
 import android.os.Bundle
-import android.text.method.PasswordTransformationMethod
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import api.RetrofitClient
+import retrofit2.Call
+import retrofit2.Response
 
 class RegisterActivity : AppCompatActivity() {
     private lateinit var backButton: ImageButton
@@ -58,13 +63,29 @@ class RegisterActivity : AppCompatActivity() {
                 passwordConfirm.isEmpty() -> showToast("비밀번호 확인을 입력해주세요")
                 password != passwordConfirm -> showToast("비밀번호가 일치하지 않습니다")
                 else -> {
-                    // TODO: 실제 회원가입 로직 구현
-                    showToast("회원가입 성공!")
-                    
-                    // HomeActivity로 이동
-                    val intent = Intent(this, HomeActivity::class.java)
-                    startActivity(intent)
-                    finish() // 현재 액티비티 종료
+                    val api = RetrofitClient.instance.create(RegisterApi::class.java)
+                    val request = RegisterRequest(email, name, password)
+
+                    api.register(request).enqueue(object : retrofit2.Callback<RegisterResponse> {
+                        override fun onResponse(
+                            call: Call<RegisterResponse>,
+                            response: Response<RegisterResponse>
+                        ) {
+                            if (response.isSuccessful) {
+                                val user = response.body()
+                                showToast("회원가입 성공! ${user?.nickname}님 환영합니다")
+                                val intent = Intent(this@RegisterActivity, HomeActivity::class.java)
+                                startActivity(intent)
+                                finish()
+                            } else {
+                                showToast("회원가입 실패: ${response.code()}")
+                            }
+                        }
+
+                        override fun onFailure(call: Call<RegisterResponse>, t: Throwable) {
+                            showToast("서버 연결 실패: ${t.message}")
+                        }
+                    })
                 }
             }
         }
