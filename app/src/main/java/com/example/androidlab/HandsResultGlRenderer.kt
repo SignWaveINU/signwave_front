@@ -2,7 +2,7 @@ package com.example.androidlab
 
 import android.opengl.GLES20
 import android.util.Log
-import api.RetrofitClient
+import api.LandmarkData
 import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.mediapipe.solutioncore.ResultGlRenderer
 import com.google.mediapipe.solutions.hands.Hands
@@ -10,15 +10,20 @@ import com.google.mediapipe.solutions.hands.HandsResult
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
-class HandsResultGlRenderer : ResultGlRenderer<HandsResult?> {
+
+
+class HandsResultGlRenderer(
+    private val onLandmarkDataReady: (LandmarkData) -> Unit
+) : ResultGlRenderer<HandsResult?> {
     private var program = 0
     private var positionHandle = 0
     private var projectionMatrixHandle = 0
     private var colorHandle = 0
+
+    // 랜드마크 시퀀스를 클래스의 멤버 변수로 선언
+    private val landmarkSequences = mutableListOf<List<Float>>()
+
     private fun loadShader(type: Int, shaderCode: String): Int {
         val shader = GLES20.glCreateShader(type)
         GLES20.glShaderSource(shader, shaderCode)
@@ -47,15 +52,8 @@ class HandsResultGlRenderer : ResultGlRenderer<HandsResult?> {
         GLES20.glLineWidth(CONNECTION_THICKNESS)
         val numHands = result.multiHandLandmarks().size
 
-        // 손들의 랜드마크 데이터를 수집할 리스트
-        val landmarkSequences = mutableListOf<List<Float>>()
-
         for (i in 0 until numHands) {
-            val isLeftHand = result.multiHandedness()[i].label == "Left"
-
-            // 각 손의 랜드마크 좌표를 담을 리스트
             val handLandmarks = mutableListOf<Float>()
-
             val landmarkList = result.multiHandLandmarks()[i].landmarkList
             for (lm in landmarkList) {
                 handLandmarks.add(lm.x)
@@ -63,37 +61,39 @@ class HandsResultGlRenderer : ResultGlRenderer<HandsResult?> {
                 handLandmarks.add(lm.z)
             }
 
-            // 이 데이터를 'LandmarkData' 형식으로 변환
-            landmarkSequences.add(handLandmarks) // 각 손의 랜드마크 좌표가 리스트로 들어갑니다.
+            // 랜드마크 데이터를 landmarkSequences에 추가
+            landmarkSequences.add(handLandmarks)
 
             // 로그로 확인
             Log.d(TAG, "Hand $i sequence: $handLandmarks")
+
+            // landmarkSequences 내용도 로그로 확인
+            Log.d(TAG, "Current landmarkSequences: $landmarkSequences")
 
             // 랜드마크를 화면에 그리기
             for (landmark in landmarkList) {
                 drawCircle(
                     landmark.x,
                     landmark.y,
-                    if (isLeftHand) LEFT_HAND_LANDMARK_COLOR else RIGHT_HAND_LANDMARK_COLOR
+                    if (result.multiHandedness()[i].label == "Left") LEFT_HAND_LANDMARK_COLOR else RIGHT_HAND_LANDMARK_COLOR
                 )
 
                 drawHollowCircle(
                     landmark.x,
                     landmark.y,
-                    if (isLeftHand) LEFT_HAND_HOLLOW_CIRCLE_COLOR
+                    if (result.multiHandedness()[i].label == "Left") LEFT_HAND_HOLLOW_CIRCLE_COLOR
                     else RIGHT_HAND_HOLLOW_CIRCLE_COLOR
                 )
             }
         }
+
+        // LandmarkData 객체 생성
+        val landmarkData = LandmarkData(sequence = landmarkSequences)
+
+        // 콜백 호출
+        onLandmarkDataReady(landmarkData)
     }
 
-    /**
-     * Deletes the shader program.
-     *
-     *
-     * This is only necessary if one wants to release the program
-    while keeping the context around.
-     */
     fun release() {
         GLES20.glDeleteProgram(program)
     }

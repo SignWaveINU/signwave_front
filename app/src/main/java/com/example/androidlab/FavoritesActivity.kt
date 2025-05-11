@@ -1,6 +1,5 @@
 package com.example.androidlab
 import android.widget.EditText // 이 줄을 추가하세요
-
 import android.content.Intent
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
@@ -13,6 +12,10 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import java.util.Locale
 import android.content.SharedPreferences
+import androidx.lifecycle.lifecycleScope
+import api.FavoriteRequest
+import api.RetrofitClient
+import kotlinx.coroutines.launch
 
 class FavoritesActivity : AppCompatActivity() {
     private lateinit var textToSpeech: TextToSpeech
@@ -95,37 +98,60 @@ class FavoritesActivity : AppCompatActivity() {
         val playButton: ImageButton = newItemLayout.findViewById(R.id.playButton)
         val deleteButton: ImageButton = newItemLayout.findViewById(R.id.deleteButton)
 
+        // 고유한 ID 생성
+        val translationHistoryId = System.currentTimeMillis().toInt() // 현재 시간을 ID로 사용
+        val memberId = 0 // 기본값으로 0을 사용 (필요에 따라 수정 가능)
+        
         textView.text = text
         textView.isEnabled = false
         playButton.setOnClickListener {
             speakOut(text)
         }
 
-
         // 삭제 버튼 클릭 시: 레이아웃에서 제거 + SharedPreferences에서 제거
         deleteButton.setOnClickListener {
             favoritesLayout.removeView(newItemLayout) // UI에서 제거
-            removeFavorite(text)                      // SharedPreferences에서 제거
+            removeFavorite(translationHistoryId.toLong()) // SharedPreferences에서 제거
         }
 
         favoritesLayout.addView(newItemLayout)
 
-        // SharedPreferences에 텍스트 저장
-        saveFavorite(text)
+        // SharedPreferences에 텍스트와 ID 저장
+        saveFavorite(text, translationHistoryId.toLong(), memberId)
+
+        // API 호출
+        sendApiRequest(translationHistoryId)
     }
 
-    private fun saveFavorite(text: String) {
+    private fun sendApiRequest(translationHistoryId: Int) {
+        val apiRequest = FavoriteRequest(translationHistoryId)
+        val token = "Bearer YOUR_ACCESS_TOKEN" // 실제 토큰으로 변경하세요.
+
+        lifecycleScope.launch {
+            try {
+                val response = RetrofitClient.favoriteApi.addFavorite(token, apiRequest) // token과 request를 전달
+                // 응답 처리
+                val memberId = response.memberId
+                // memberId를 사용하여 추가 작업 수행
+            } catch (e: Exception) {
+                Log.e("API Error", "Failed to add favorite: ${e.message}")
+            }
+        }
+    }
+
+    private fun saveFavorite(text: String, translationHistoryId: Long, memberId: Int) {
         val editor = sharedPreferences.edit()
         val favorites = sharedPreferences.getStringSet("favorites", mutableSetOf()) ?: mutableSetOf()
-        favorites.add(text)
+        favorites.add("$translationHistoryId:$memberId:$text") // ID, memberId, 텍스트를 함께 저장
         editor.putStringSet("favorites", favorites)
         editor.apply()
     }
 
     private fun restoreFavorites() {
         val favorites = sharedPreferences.getStringSet("favorites", mutableSetOf()) ?: mutableSetOf()
-        for (text in favorites) {
-            addNewItem(text)
+        for (favorite in favorites) {
+            val (id, memberId, text) = favorite.split(":", limit = 3)
+            addNewItem(text) // 텍스트만 추가
         }
     }
 
@@ -133,9 +159,9 @@ class FavoritesActivity : AppCompatActivity() {
         textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
     }
 
-    private fun removeFavorite(text: String) {
+    private fun removeFavorite(translationHistoryId: Long) {
         val favorites = sharedPreferences.getStringSet("favorites", mutableSetOf())?.toMutableSet() ?: return
-        favorites.remove(text)
+        favorites.removeIf { it.startsWith("$translationHistoryId:") }
         sharedPreferences.edit().putStringSet("favorites", favorites).apply()
     }
 

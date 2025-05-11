@@ -63,10 +63,9 @@ class RegisterActivity : AppCompatActivity() {
                 passwordConfirm.isEmpty() -> showToast("비밀번호 확인을 입력해주세요")
                 password != passwordConfirm -> showToast("비밀번호가 일치하지 않습니다")
                 else -> {
-                    val api = RetrofitClient.instance.create(RegisterApi::class.java)
                     val request = RegisterRequest(email, name, password)
 
-                    api.register(request).enqueue(object : retrofit2.Callback<RegisterResponse> {
+                    RetrofitClient.registerApi.register(request).enqueue(object : retrofit2.Callback<RegisterResponse> {
                         override fun onResponse(
                             call: Call<RegisterResponse>,
                             response: Response<RegisterResponse>

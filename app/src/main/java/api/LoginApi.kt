@@ -17,5 +17,5 @@ data class LoginResponse(
 
 interface LoginApi {
     @POST("auth/login")  // 실제 서버의 로그인 API 경로로 수정해야 합니다
-    fun login(@Body request: LoginRequest): Call<LoginResponse>
+    fun login(@Body loginRequest: LoginRequest): Call<LoginResponse>
 }

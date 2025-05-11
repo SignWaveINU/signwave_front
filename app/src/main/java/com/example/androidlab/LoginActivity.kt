@@ -8,7 +8,6 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import api.LoginApi
 import api.LoginRequest
 import api.LoginResponse
 import api.RetrofitClient
@@ -90,15 +89,18 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun loginUser(email: String, password: String) {
-        val loginApi = RetrofitClient.instance.create(LoginApi::class.java)
         val loginRequest = LoginRequest(email, password)
 
         // Retrofit의 비동기 콜백을 사용하여 로그인 처리
-        loginApi.login(loginRequest).enqueue(object : Callback<LoginResponse> {
+        RetrofitClient.loginApi.login(loginRequest).enqueue(object : Callback<LoginResponse> {
             override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
                 if (response.isSuccessful) {
                     val token = response.body()?.token
-                    showToast("로그인 성공! 토큰: $token")
+                    // 토큰을 SharedPreferences에 저장
+                    val sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+                    sharedPreferences.edit().putString("token", token).apply()
+
+                    showToast("로그인 성공!")
 
                     // HomeActivity로 이동
                     val intent = Intent(this@LoginActivity, HomeActivity::class.java)
@@ -118,4 +120,4 @@ class LoginActivity : AppCompatActivity() {
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
-} 
+}

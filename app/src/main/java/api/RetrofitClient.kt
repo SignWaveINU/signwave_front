@@ -1,5 +1,6 @@
 package api
 
+import RegisterApi
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -7,10 +8,26 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitClient {
     private const val BASE_URL = "http://192.168.0.150:8080/"
 
-    val instance: Retrofit by lazy {
+    private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+    }
+
+    val instance: ApiService by lazy {
+        retrofit.create(ApiService::class.java)
+    }
+
+    val loginApi: LoginApi by lazy {
+        retrofit.create(LoginApi::class.java)
+    }
+
+    val registerApi: RegisterApi by lazy {
+        retrofit.create(RegisterApi::class.java)
+    }
+
+    val favoriteApi: FavoriteApi by lazy {
+        retrofit.create(FavoriteApi::class.java)
     }
 }
