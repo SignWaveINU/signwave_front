@@ -1,5 +1,6 @@
 package com.example.androidlab
 
+import ReservationRequest
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
@@ -9,7 +10,15 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.TimePicker
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import api.RetrofitClient
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class CalendarActivity : AppCompatActivity() {
     private lateinit var calendarView: CalendarView
@@ -19,15 +28,11 @@ class CalendarActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_calendar)
-
+        
         // 뷰 초기화
         calendarView = findViewById(R.id.calendarView)
         reservationText = findViewById(R.id.reservationText)
-
-        // 예약 정보 불러오기
-        val sharedPref = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
-        val savedReservation = sharedPref.getString("reservation", "")
-        reservationText.text = savedReservation // 저장된 예약 텍스트를 설정
+        reservationText.text = ""  // TextView 초기화
 
         // 네비게이션 버튼 설정
         val homeButton = findViewById<ImageButton>(R.id.homeButton)
@@ -67,21 +72,48 @@ class CalendarActivity : AppCompatActivity() {
             val hospital = hospitalName.text.toString()
             val hour = timePicker.hour
             val minute = timePicker.minute
-            val timeString = String.format("%02d:%02d", hour, minute)
+            
+            // API 요청을 위한 날짜 형식 변환
+            val calendar = Calendar.getInstance()
+            calendar.set(Calendar.HOUR_OF_DAY, hour)
+            calendar.set(Calendar.MINUTE, minute)
+            
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val timeFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            
+            val reservationDate = dateFormat.format(calendar.time)
+            val reservationTime = timeFormat.format(calendar.time)
 
-            val finalText = if (hospital.isNotEmpty()) {
-                "$selectedDate $timeString $hospital 예약"
-            } else {
-                "$selectedDate $timeString 예약"
-            }
+            // API 호출
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val request = ReservationRequest(
+                        hospitalName = hospital,
+                        reservationDate = reservationDate,
+                        reservationTime = reservationTime
+                    )
 
-            reservationText.text = finalText
-
-            // ✅ 텍스트를 설정한 다음에 저장!
-            val sharedPref = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
-            with (sharedPref.edit()) {
-                putString("reservation", finalText)
-                apply()
+                    val response = RetrofitClient.reservationApi.createReservation("", request)
+                    
+                    if (response.isSuccessful) {
+                        val reservationResponse = response.body()
+                        // UI 업데이트
+                        runOnUiThread {
+                            val timeString = String.format("%02d:%02d", hour, minute)
+                            val finalText = "$selectedDate $timeString ${reservationResponse?.hospitalName} 예약"
+                            reservationText.text = finalText
+                            Toast.makeText(this@CalendarActivity, "예약이 완료되었습니다.", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        runOnUiThread {
+                            Toast.makeText(this@CalendarActivity, "예약 생성에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        Toast.makeText(this@CalendarActivity, "오류가 발생했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
 
             dialog.dismiss()

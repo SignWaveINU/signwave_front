@@ -14,7 +14,7 @@ data class SubmitResponse(
 )
 
 interface ApiService {
-    @POST("translate")
+    @POST("gesture-to-sentence")
     suspend fun submitLandmarks(
         @Header("Authorization") token: String,
         @Body landmarkData: LandmarkData

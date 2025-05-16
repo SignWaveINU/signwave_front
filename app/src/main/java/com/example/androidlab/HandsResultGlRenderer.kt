@@ -1,19 +1,29 @@
 package com.example.androidlab
 
+import android.Manifest
+import android.content.Context
 import android.opengl.GLES20
+import android.os.Environment
 import android.util.Log
 import api.LandmarkData
 import com.google.mediapipe.formats.proto.LandmarkProto
 import com.google.mediapipe.solutioncore.ResultGlRenderer
 import com.google.mediapipe.solutions.hands.Hands
 import com.google.mediapipe.solutions.hands.HandsResult
-
+import com.google.gson.Gson
+import java.io.File
+import java.io.FileWriter
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-
-
+import com.karumi.dexter.Dexter
+import com.karumi.dexter.MultiplePermissionsReport
+import com.karumi.dexter.PermissionToken
+import com.karumi.dexter.listener.PermissionRequest
+import com.karumi.dexter.listener.multi.MultiplePermissionsListener
 
 class HandsResultGlRenderer(
+    private val context: Context,
     private val onLandmarkDataReady: (LandmarkData) -> Unit
 ) : ResultGlRenderer<HandsResult?> {
     private var program = 0
@@ -67,9 +77,6 @@ class HandsResultGlRenderer(
             // 로그로 확인
             Log.d(TAG, "Hand $i sequence: $handLandmarks")
 
-            // landmarkSequences 내용도 로그로 확인
-            Log.d(TAG, "Current landmarkSequences: $landmarkSequences")
-
             // 랜드마크를 화면에 그리기
             for (landmark in landmarkList) {
                 drawCircle(
@@ -87,11 +94,32 @@ class HandsResultGlRenderer(
             }
         }
 
+        // 랜드마크 데이터가 추가된 후 한 번만 JSON 파일 저장
+        if (landmarkSequences.isNotEmpty()) {
+            saveLandmarkDataToJson(landmarkSequences)
+        }
+
         // LandmarkData 객체 생성
         val landmarkData = LandmarkData(sequence = landmarkSequences)
 
         // 콜백 호출
         onLandmarkDataReady(landmarkData)
+    }
+
+    private fun saveLandmarkDataToJson(landmarkSequences: List<List<Float>>) {
+        val gson = Gson()
+        val json = gson.toJson(landmarkSequences)
+
+        // 파일 저장 경로 설정
+        val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "landmark_data.json")
+
+        try {
+            // JSON 파일에 데이터 쓰기
+            file.writeText(json)  // 또는 FileWriter(file).use { it.write(json) }
+            Log.d(TAG, "JSON 저장 완료: ${file.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "파일 저장 중 오류 발생", e)
+        }
     }
 
     fun release() {
@@ -167,6 +195,31 @@ class HandsResultGlRenderer(
         GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT,
             false, 0, vertexBuffer)
         GLES20.glDrawArrays(GLES20.GL_LINE_STRIP, 0, vertexCount)
+    }
+
+    private fun requestPermissions() {
+        Dexter.withContext(context)
+            .withPermissions(
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            )
+            .withListener(object : MultiplePermissionsListener {
+                override fun onPermissionsChecked(report: MultiplePermissionsReport) {
+                    if (report.areAllPermissionsGranted()) {
+                        // 권한이 허용되었을 때의 처리
+                    } else {
+                        // 권한이 거부되었을 때의 처리
+                        Log.e(TAG, "권한이 거부되었습니다.")
+                    }
+                }
+
+                override fun onPermissionRationaleShouldBeShown(
+                    permissions: List<PermissionRequest>,
+                    token: PermissionToken
+                ) {
+                    token.continuePermissionRequest()
+                }
+            }).check()
     }
 
     companion object {

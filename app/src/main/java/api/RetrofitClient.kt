@@ -1,6 +1,7 @@
 package api
 
 import RegisterApi
+import ReservationApi
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -29,5 +30,17 @@ object RetrofitClient {
 
     val favoriteApi: FavoriteApi by lazy {
         retrofit.create(FavoriteApi::class.java)
+    }
+
+    val historyApi: HistoryApi by lazy {
+        retrofit.create(HistoryApi::class.java)
+    }
+
+    val ttsApi: TtsApi by lazy {
+        retrofit.create(TtsApi::class.java)
+    }
+
+    val reservationApi: ReservationApi by lazy {
+        retrofit.create(ReservationApi::class.java)
     }
 }

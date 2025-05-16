@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import api.LandmarkData
 import api.RetrofitClient
+import api.TTSRequest
 import com.google.mediapipe.solutioncore.CameraInput
 import com.google.mediapipe.solutioncore.SolutionGlSurfaceView
 import com.google.mediapipe.solutions.hands.Hands
@@ -27,10 +28,9 @@ import com.karumi.dexter.listener.single.PermissionListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.util.Locale
+import android.media.MediaPlayer
+import java.io.File
 
 class HomeActivity : AppCompatActivity(){
     private lateinit var hands: Hands
@@ -146,7 +146,7 @@ class HomeActivity : AppCompatActivity(){
         cameraInput.setNewFrameListener { hands.send(it) }
 
         // handsResultGlRenderer 초기화
-        handsResultGlRenderer = HandsResultGlRenderer { landmarkData ->
+        handsResultGlRenderer = HandsResultGlRenderer(this) { landmarkData ->
             // API 호출
             sendLandmarkDataToServer(landmarkData)
         }
@@ -186,18 +186,79 @@ class HomeActivity : AppCompatActivity(){
     }
 
     private fun sendLandmarkDataToServer(landmarkData: LandmarkData) {
-        // CoroutineScope를 사용하여 비동기 API 호출
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // landmarkData 로그 출력
+                Log.d("TAG", "landmarkData: $landmarkData")
+                
                 val response = RetrofitClient.instance.submitLandmarks("Bearer $token", landmarkData)
                 if (response.isSuccessful) {
-                    val submitResponse = response.body() // SubmitResponse 객체 가져오기
-                    val translatedText = submitResponse?.sentence ?: "번역된 내용이 없습니다." // 번역된 내용 가져오기
+                    val submitResponse = response.body()
+                    val translatedText = submitResponse?.sentence ?: "번역된 내용이 없습니다."
 
-                    // UI 업데이트는 메인 스레드에서 수행해야 하므로 withContext 사용
-                    withContext(Dispatchers.Main) {
-                        translationText.text = translatedText // TextView에 텍스트 설정
-                        Log.d("TAG", "API 호출 성공: $translatedText")
+                    // TTS API 호출
+                    try {
+                        val ttsResponse = RetrofitClient.ttsApi.generateTTS(
+                            "Bearer $token",
+                            TTSRequest(sentence = translatedText)
+                        )
+                        
+                        if (ttsResponse.isSuccessful) {
+                            val ttsResult = ttsResponse.body()
+                            val audioBase64 = ttsResult?.audio_base64
+                            Log.d("TTS", "audioBase64: $audioBase64") // 이 로그 추가
+                            
+                            if (audioBase64 != null) {
+                                // base64 오디오 데이터를 바이트 배열로 변환
+                                val audioBytes = android.util.Base64.decode(audioBase64, android.util.Base64.DEFAULT)
+                                Log.d("TTS", "audioBytes length: ${audioBytes.size}") // 이 로그 추가
+                                // 메인 스레드에서 오디오 재생
+                                runOnUiThread {
+                                    try {
+                                        // 임시 파일 생성
+                                        val tempFile = File.createTempFile("tts_audio", ".mp3", cacheDir)
+                                        tempFile.writeBytes(audioBytes)
+                                        
+                                        // MediaPlayer로 재생
+                                        val mediaPlayer = MediaPlayer().apply {
+                                            setDataSource(tempFile.path)
+                                            prepare()
+                                            start()
+                                            
+                                            // 재생 완료 후 리소스 정리
+                                            setOnCompletionListener { mp ->
+                                                mp.release()
+                                                tempFile.delete()
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e("TTS", "오디오 재생 중 오류 발생: ${e.message}")
+                                    }
+                                }
+                            } else {
+                                Log.e("TTS", "audioBase64가 null입니다")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("TAG", "TTS API 호출 중 오류 발생: ${e.message}")
+                    }
+
+                    // SharedPreferences에 저장
+                    val sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+                    with(sharedPreferences.edit()) {
+                        putString("translatedText", translatedText)
+                        apply()
+                    }
+
+                    // UI 업데이트는 메인 스레드에서 수행
+                    runOnUiThread {
+                        val translationTextView: TextView = findViewById(R.id.translationText)
+                        translationTextView.text = translatedText
+                        // 번역된 텍스트가 업데이트될 때 자동으로 TTS 실행
+                        if (translatedText.isNotEmpty()) {
+                            textToSpeech.speak(translatedText, TextToSpeech.QUEUE_FLUSH, null, null)
+                        }
+                        Toast.makeText(this@HomeActivity, "번역된 텍스트가 저장되었습니다.", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Log.e("TAG", "API 호출 실패: ${response.errorBody()?.string()}")
