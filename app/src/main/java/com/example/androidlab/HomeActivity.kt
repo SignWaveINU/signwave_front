@@ -274,4 +274,12 @@ class HomeActivity : AppCompatActivity(){
         hands.close()
         textToSpeech.shutdown()
     }
+
+    override fun onPause() {
+        super.onPause()
+        // TTS 중지
+        if (textToSpeech.isSpeaking) {
+            textToSpeech.stop()
+        }
+    }
 }

@@ -4,6 +4,7 @@ import ReservationRequest
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.CalendarView
 import android.widget.EditText
@@ -23,6 +24,7 @@ import kotlinx.coroutines.launch
 class CalendarActivity : AppCompatActivity() {
     private lateinit var calendarView: CalendarView
     private lateinit var reservationText: TextView
+    private lateinit var deleteButton: ImageButton
     private var selectedDate: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,7 +34,21 @@ class CalendarActivity : AppCompatActivity() {
         // 뷰 초기화
         calendarView = findViewById(R.id.calendarView)
         reservationText = findViewById(R.id.reservationText)
-        reservationText.text = ""  // TextView 초기화
+        deleteButton = findViewById(R.id.deleteButton)
+        
+        // 저장된 예약 정보 불러오기
+        val sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+        val savedReservation = sharedPreferences.getString("reservation", "")
+        reservationText.text = savedReservation
+        deleteButton.visibility = if (savedReservation.isNullOrEmpty()) View.GONE else View.VISIBLE
+
+        // 삭제 버튼 설정
+        deleteButton.setOnClickListener {
+            reservationText.text = ""
+            deleteButton.visibility = View.GONE
+            // 저장된 예약 정보 삭제
+            sharedPreferences.edit().remove("reservation").apply()
+        }
 
         // 네비게이션 버튼 설정
         val homeButton = findViewById<ImageButton>(R.id.homeButton)
@@ -73,6 +89,18 @@ class CalendarActivity : AppCompatActivity() {
             val hour = timePicker.hour
             val minute = timePicker.minute
             
+            // 예약 정보 UI 업데이트
+            val timeString = String.format("%02d:%02d", hour, minute)
+            val finalText = "$selectedDate $timeString $hospital 예약"
+            reservationText.text = finalText
+            deleteButton.visibility = View.VISIBLE
+            
+            // 예약 정보 저장
+            getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+                .edit()
+                .putString("reservation", finalText)
+                .apply()
+            
             // API 요청을 위한 날짜 형식 변환
             val calendar = Calendar.getInstance()
             calendar.set(Calendar.HOUR_OF_DAY, hour)
@@ -87,31 +115,26 @@ class CalendarActivity : AppCompatActivity() {
             // API 호출
             CoroutineScope(Dispatchers.IO).launch {
                 try {
+                    val token = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("token", "") ?: ""
                     val request = ReservationRequest(
                         hospitalName = hospital,
                         reservationDate = reservationDate,
                         reservationTime = reservationTime
                     )
 
-                    val response = RetrofitClient.reservationApi.createReservation("", request)
-                    
-                    if (response.isSuccessful) {
-                        val reservationResponse = response.body()
-                        // UI 업데이트
-                        runOnUiThread {
-                            val timeString = String.format("%02d:%02d", hour, minute)
-                            val finalText = "$selectedDate $timeString ${reservationResponse?.hospitalName} 예약"
-                            reservationText.text = finalText
-                            Toast.makeText(this@CalendarActivity, "예약이 완료되었습니다.", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        runOnUiThread {
-                            Toast.makeText(this@CalendarActivity, "예약 생성에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    val response = RetrofitClient.reservationApi.createReservation("Bearer $token", request)
+                    runOnUiThread {
+                        if (response.isSuccessful) {
+                            Toast.makeText(this@CalendarActivity, "예약이 성공적으로 생성되었습니다", Toast.LENGTH_SHORT).show()
+                        } else {
+                            val errorMessage = response.errorBody()?.string() ?: "예약 생성에 실패했습니다"
+                            Toast.makeText(this@CalendarActivity, errorMessage, Toast.LENGTH_SHORT).show()
                         }
                     }
                 } catch (e: Exception) {
                     runOnUiThread {
-                        Toast.makeText(this@CalendarActivity, "오류가 발생했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+                        val errorMessage = e.message ?: "예약 생성 중 오류가 발생했습니다"
+                        Toast.makeText(this@CalendarActivity, errorMessage, Toast.LENGTH_SHORT).show()
                     }
                 }
             }
