@@ -3,6 +3,7 @@ package com.example.androidlab
 import android.content.Intent
 import android.os.Bundle
 import android.text.method.PasswordTransformationMethod
+import android.util.Log
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
@@ -96,6 +97,9 @@ class LoginActivity : AppCompatActivity() {
             override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
                 if (response.isSuccessful) {
                     val token = response.body()?.token
+                    // 토큰값 로그 출력
+                    Log.d("LoginActivity", "Token: $token")
+                    
                     // 토큰을 SharedPreferences에 저장
                     val sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
                     sharedPreferences.edit().putString("token", token).apply()

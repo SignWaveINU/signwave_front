@@ -42,25 +42,35 @@ class HistoryActivity : AppCompatActivity() {
         }
 
         val imageButton = findViewById<ImageButton>(R.id.imageButton1)
+    
+        // SharedPreferences에서 아이콘 상태 복원
+        val isIconPressed = sharedPreferences.getBoolean("isIconPressed", false)
+        imageButton.setImageResource(if (isIconPressed) R.drawable.ic_on_record else R.drawable.ic_record)
 
         // 첫 번째 버튼 클릭 시 아이콘을 변경하고 즐겨찾기에 추가하는 리스너 추가
         imageButton.setOnClickListener {
             val currentIcon = imageButton.drawable
-            val newIcon = if (currentIcon.constantState == resources.getDrawable(R.drawable.ic_record).constantState) {
-                R.drawable.ic_on_record // 아이콘을 변경
+            val isCurrentlyPressed = currentIcon.constantState == resources.getDrawable(R.drawable.ic_record).constantState
+            val newIcon = if (isCurrentlyPressed) {
+                R.drawable.ic_on_record
             } else {
-                R.drawable.ic_record // 아이콘을 다시 변경
+                R.drawable.ic_record
             }
-            imageButton.setImageResource(newIcon) // 아이콘 변경
-
-            // translatedTextView의 텍스트를 가져와서 SharedPreferences에 저장
-            val translatedText = findViewById<TextView>(R.id.translatedTextView).text.toString()
-            val sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+            imageButton.setImageResource(newIcon)
+    
+            // 아이콘 상태를 SharedPreferences에 저장
             with(sharedPreferences.edit()) {
-                putString("favorite_text", translatedText)
+                putBoolean("isIconPressed", isCurrentlyPressed)
+                // 아이콘이 on 상태일 때만 즐겨찾기에 저장
+                if (isCurrentlyPressed) {
+                    putString("favorite_text", translatedText)
+                    Toast.makeText(this@HistoryActivity, "즐겨찾기에 추가되었습니다", Toast.LENGTH_SHORT).show()
+                } else {
+                    remove("favorite_text") // 즐겨찾기 제거
+                    Toast.makeText(this@HistoryActivity, "즐겨찾기가 해제되었습니다", Toast.LENGTH_SHORT).show()
+                }
                 apply()
             }
-            Toast.makeText(this, "즐겨찾기에 추가되었습니다", Toast.LENGTH_SHORT).show()
         }
 
 
@@ -101,8 +111,8 @@ class HistoryActivity : AppCompatActivity() {
 
         // API 호출
         fetchTranslationHistory()
-        // 현재 시간 표시
-        updateCurrentTime()
+        // 현재 시간 표시 제거
+        // updateCurrentTime() // 이 줄 제거
     }
 
     private fun updateCurrentTime() {
@@ -118,7 +128,6 @@ class HistoryActivity : AppCompatActivity() {
     private fun fetchTranslationHistory() {
         lifecycleScope.launch {
             try {
-                // API 호출 시도 로그
                 Log.d("HistoryActivity", "API 호출 시작")
                 
                 val translationHistoryList = RetrofitClient.historyApi.getTranslationHistory()
@@ -126,11 +135,17 @@ class HistoryActivity : AppCompatActivity() {
 
                 if (translationHistoryList.isNotEmpty()) {
                     val translatedText = translationHistoryList[0].translatedText
+                    val currentTime = java.text.SimpleDateFormat("yyyy년 M월 d일 H:mm", Locale.KOREA).format(java.util.Date())
                     Log.d("HistoryActivity", "설정할 텍스트: $translatedText")
                     
                     runOnUiThread {
                         val textView: TextView = findViewById(R.id.translatedTextView)
                         textView.text = translatedText
+                        
+                        // 시간 표시 업데이트
+                        val timeTextView1 = findViewById<TextView>(R.id.timeTextView1)
+                        timeTextView1.text = currentTime // 텍스트를 받아온 시간으로 설정
+                        
                         Log.d("HistoryActivity", "텍스트 설정 완료")
                     }
                 } else {
@@ -141,7 +156,7 @@ class HistoryActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e("HistoryActivity", "API 호출 실패: ${e.message}")
-                Log.e("HistoryActivity", "상세 에러:", e)  // 스택 트레이스 출력
+                Log.e("HistoryActivity", "상세 에러:", e)
                 
                 runOnUiThread {
                     Toast.makeText(this@HistoryActivity, "데이터를 불러오지 못했습니다: ${e.message}", Toast.LENGTH_SHORT).show()

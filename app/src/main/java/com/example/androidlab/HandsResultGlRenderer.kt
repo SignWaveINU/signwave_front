@@ -21,6 +21,12 @@ import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.cancel
 
 class HandsResultGlRenderer(
     private val context: Context,
@@ -51,6 +57,58 @@ class HandsResultGlRenderer(
         positionHandle = GLES20.glGetAttribLocation(program, "vPosition")
         projectionMatrixHandle = GLES20.glGetUniformLocation(program, "uProjectionMatrix")
         colorHandle = GLES20.glGetUniformLocation(program, "uColor")
+    }
+
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
+    
+    private fun saveLandmarkDataToCsv(landmarkSequences: List<List<Float>>) {
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "landmark_data.csv")
+                FileWriter(file).use { writer ->
+                    writer.append("x,y,z\n")
+                    for (handLandmarks in landmarkSequences) {
+                        for (i in 0 until handLandmarks.size step 3) {
+                            val x = handLandmarks[i]
+                            val y = handLandmarks[i + 1]
+                            val z = handLandmarks[i + 2]
+                            writer.append("$x,$y,$z\n")
+                        }
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    Log.d(TAG, "CSV 저장 완료: ${file.absolutePath}")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Log.e(TAG, "파일 저장 중 오류 발생", e)
+                }
+            }
+        }
+    }
+
+    private fun saveLandmarkDataToJson(landmarkSequences: List<List<Float>>) {
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val gson = Gson()
+                val json = gson.toJson(landmarkSequences)
+                val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "landmark_data.json")
+                file.writeText(json)
+                
+                withContext(Dispatchers.Main) {
+                    Log.d(TAG, "JSON 저장 완료: ${file.absolutePath}")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Log.e(TAG, "파일 저장 중 오류 발생", e)
+                }
+            }
+        }
+    }
+    
+    fun release() {
+        coroutineScope.cancel()
+        GLES20.glDeleteProgram(program)
     }
 
     override fun renderResult(result: HandsResult?, projectionMatrix: FloatArray) {
@@ -104,26 +162,11 @@ class HandsResultGlRenderer(
 
         // 콜백 호출
         onLandmarkDataReady(landmarkData)
-    }
 
-    private fun saveLandmarkDataToJson(landmarkSequences: List<List<Float>>) {
-        val gson = Gson()
-        val json = gson.toJson(landmarkSequences)
-
-        // 파일 저장 경로 설정
-        val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "landmark_data.json")
-
-        try {
-            // JSON 파일에 데이터 쓰기
-            file.writeText(json)  // 또는 FileWriter(file).use { it.write(json) }
-            Log.d(TAG, "JSON 저장 완료: ${file.absolutePath}")
-        } catch (e: Exception) {
-            Log.e(TAG, "파일 저장 중 오류 발생", e)
+        // 랜드마크 데이터가 추가된 후 한 번만 CSV 파일 저장
+        if (landmarkSequences.isNotEmpty()) {
+            saveLandmarkDataToCsv(landmarkSequences)
         }
-    }
-
-    fun release() {
-        GLES20.glDeleteProgram(program)
     }
 
     private fun drawConnections(
