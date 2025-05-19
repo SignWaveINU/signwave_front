@@ -136,7 +136,7 @@ class HomeActivity : AppCompatActivity(){
             this@HomeActivity,
             HandsOptions.builder()
                 .setStaticImageMode(false)
-                .setMaxNumHands(1)
+                .setMaxNumHands(2)
                 .setRunOnGpu(true)
                 .build()
         )
@@ -196,7 +196,22 @@ class HomeActivity : AppCompatActivity(){
                     val submitResponse = response.body()
                     val translatedText = submitResponse?.sentence ?: "번역된 내용이 없습니다."
 
-                    // TTS API 호출
+                    // 번역 기록 조회 API 호출 추가
+                    try {
+                        val historyResponse = RetrofitClient.historyApi.getTranslationHistory("Bearer $token")  // 토큰 추가
+                        Log.d("History", "번역 기록: $historyResponse")
+                        
+                        // 가장 최근 번역 기록 사용
+                        if (historyResponse.isNotEmpty()) {
+                            val latestHistory = historyResponse[0]
+                            // audioUrl이 있다면 이를 사용할 수 있습니다
+                            Log.d("History", "최근 번역: ${latestHistory.translatedText}, 시간: ${latestHistory.createdTime}")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("History", "번역 기록 조회 실패: ${e.message}")
+                    }
+
+                    // 기존 TTS 로직 유지
                     try {
                         val ttsResponse = RetrofitClient.ttsApi.generateTTS(
                             "Bearer $token",

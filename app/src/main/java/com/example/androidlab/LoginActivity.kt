@@ -9,9 +9,11 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import api.LoginRequest
 import api.LoginResponse
 import api.RetrofitClient
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -92,17 +94,26 @@ class LoginActivity : AppCompatActivity() {
     private fun loginUser(email: String, password: String) {
         val loginRequest = LoginRequest(email, password)
 
-        // Retrofit의 비동기 콜백을 사용하여 로그인 처리
         RetrofitClient.loginApi.login(loginRequest).enqueue(object : Callback<LoginResponse> {
             override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
                 if (response.isSuccessful) {
                     val token = response.body()?.token
-                    // 토큰값 로그 출력
                     Log.d("LoginActivity", "Token: $token")
                     
                     // 토큰을 SharedPreferences에 저장
                     val sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
                     sharedPreferences.edit().putString("token", token).apply()
+
+                    // 번역 기록 조회
+                    lifecycleScope.launch {
+                        try {
+                            val histories = RetrofitClient.historyApi.getTranslationHistory("Bearer $token")
+                            Log.d("LoginActivity", "번역 기록 조회 성공: ${histories.size}개의 기록")
+                            Log.d("LoginActivity", "번역 기록: $histories")
+                        } catch (e: Exception) {
+                            Log.e("LoginActivity", "번역 기록 조회 실패: ${e.message}")
+                        }
+                    }
 
                     showToast("로그인 성공!")
 

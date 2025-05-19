@@ -12,8 +12,7 @@ import com.google.mediapipe.solutions.hands.Hands
 import com.google.mediapipe.solutions.hands.HandsResult
 import com.google.gson.Gson
 import java.io.File
-import java.io.FileWriter
-import java.io.IOException
+
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import com.karumi.dexter.Dexter
@@ -27,6 +26,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.cancel
+import java.util.Collections
+import java.util.ArrayList
 
 class HandsResultGlRenderer(
     private val context: Context,
@@ -37,8 +38,8 @@ class HandsResultGlRenderer(
     private var projectionMatrixHandle = 0
     private var colorHandle = 0
 
-    // 랜드마크 시퀀스를 클래스의 멤버 변수로 선언
-    private val landmarkSequences = mutableListOf<List<Float>>()
+    // 랜드마크 시퀀스를 동기화된 리스트로 변경
+    private val landmarkSequences = Collections.synchronizedList(mutableListOf<List<Float>>())
 
     private fun loadShader(type: Int, shaderCode: String): Int {
         val shader = GLES20.glCreateShader(type)
@@ -60,32 +61,6 @@ class HandsResultGlRenderer(
     }
 
     private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
-    
-    private fun saveLandmarkDataToCsv(landmarkSequences: List<List<Float>>) {
-        coroutineScope.launch(Dispatchers.IO) {
-            try {
-                val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "landmark_data.csv")
-                FileWriter(file).use { writer ->
-                    writer.append("x,y,z\n")
-                    for (handLandmarks in landmarkSequences) {
-                        for (i in 0 until handLandmarks.size step 3) {
-                            val x = handLandmarks[i]
-                            val y = handLandmarks[i + 1]
-                            val z = handLandmarks[i + 2]
-                            writer.append("$x,$y,$z\n")
-                        }
-                    }
-                }
-                withContext(Dispatchers.Main) {
-                    Log.d(TAG, "CSV 저장 완료: ${file.absolutePath}")
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Log.e(TAG, "파일 저장 중 오류 발생", e)
-                }
-            }
-        }
-    }
 
     private fun saveLandmarkDataToJson(landmarkSequences: List<List<Float>>) {
         coroutineScope.launch(Dispatchers.IO) {
@@ -94,7 +69,7 @@ class HandsResultGlRenderer(
                 val json = gson.toJson(landmarkSequences)
                 val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "landmark_data.json")
                 file.writeText(json)
-                
+
                 withContext(Dispatchers.Main) {
                     Log.d(TAG, "JSON 저장 완료: ${file.absolutePath}")
                 }
@@ -105,7 +80,7 @@ class HandsResultGlRenderer(
             }
         }
     }
-    
+
     fun release() {
         coroutineScope.cancel()
         GLES20.glDeleteProgram(program)
@@ -115,11 +90,12 @@ class HandsResultGlRenderer(
         if (result == null) {
             return
         }
+        
         GLES20.glUseProgram(program)
         GLES20.glUniformMatrix4fv(projectionMatrixHandle, 1, false, projectionMatrix, 0)
         GLES20.glLineWidth(CONNECTION_THICKNESS)
         val numHands = result.multiHandLandmarks().size
-
+    
         for (i in 0 until numHands) {
             val handLandmarks = mutableListOf<Float>()
             val landmarkList = result.multiHandLandmarks()[i].landmarkList
@@ -128,21 +104,26 @@ class HandsResultGlRenderer(
                 handLandmarks.add(lm.y)
                 handLandmarks.add(lm.z)
             }
-
-            // 랜드마크 데이터를 landmarkSequences에 추가
+    
             landmarkSequences.add(handLandmarks)
-
-            // 로그로 확인
             Log.d(TAG, "Hand $i sequence: $handLandmarks")
-
-            // 랜드마크를 화면에 그리기
+    
+            // 손가락 관절 연결선 그리기 추가
+            drawConnections(
+                landmarkList,
+                if (result.multiHandedness()[i].label == "Left") LEFT_HAND_CONNECTION_COLOR
+                else RIGHT_HAND_CONNECTION_COLOR
+            )
+    
+            // 랜드마크 점 그리기
             for (landmark in landmarkList) {
                 drawCircle(
                     landmark.x,
                     landmark.y,
-                    if (result.multiHandedness()[i].label == "Left") LEFT_HAND_LANDMARK_COLOR else RIGHT_HAND_LANDMARK_COLOR
+                    if (result.multiHandedness()[i].label == "Left") LEFT_HAND_LANDMARK_COLOR
+                    else RIGHT_HAND_LANDMARK_COLOR
                 )
-
+    
                 drawHollowCircle(
                     landmark.x,
                     landmark.y,
@@ -154,19 +135,17 @@ class HandsResultGlRenderer(
 
         // 랜드마크 데이터가 추가된 후 한 번만 JSON 파일 저장
         if (landmarkSequences.isNotEmpty()) {
-            saveLandmarkDataToJson(landmarkSequences)
+            // 리스트의 복사본을 만들어서 전달
+            val sequencesCopy = ArrayList(landmarkSequences)
+            saveLandmarkDataToJson(sequencesCopy)
         }
 
-        // LandmarkData 객체 생성
-        val landmarkData = LandmarkData(sequence = landmarkSequences)
+        // LandmarkData 객체 생성 시 복사본 사용
+        val sequencesCopy = ArrayList(landmarkSequences)
+        val landmarkData = LandmarkData(sequence = sequencesCopy)
 
         // 콜백 호출
         onLandmarkDataReady(landmarkData)
-
-        // 랜드마크 데이터가 추가된 후 한 번만 CSV 파일 저장
-        if (landmarkSequences.isNotEmpty()) {
-            saveLandmarkDataToCsv(landmarkSequences)
-        }
     }
 
     private fun drawConnections(

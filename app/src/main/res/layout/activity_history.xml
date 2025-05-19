@@ -15,7 +15,7 @@
         android:textColor="#000000"
         android:textSize="12sp"
         app:layout_constraintStart_toStartOf="@+id/subtitleText2"
-        app:layout_constraintTop_toBottomOf="@+id/subtitleText2" />4edx
+        app:layout_constraintTop_toBottomOf="@+id/subtitleText2" />
 
     <TextView
         android:id="@+id/subtitleText2"
