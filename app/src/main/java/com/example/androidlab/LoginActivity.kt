@@ -104,14 +104,20 @@ class LoginActivity : AppCompatActivity() {
                     val sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
                     sharedPreferences.edit().putString("token", token).apply()
 
-                    // 번역 기록 조회
+                    // 번역 기록과 즐겨찾기 조회
                     lifecycleScope.launch {
                         try {
+                            // 일반 번역 기록 조회
                             val histories = RetrofitClient.historyApi.getTranslationHistory("Bearer $token")
                             Log.d("LoginActivity", "번역 기록 조회 성공: ${histories.size}개의 기록")
                             Log.d("LoginActivity", "번역 기록: $histories")
+
+                            // 즐겨찾기된 번역 기록 조회
+                            val favorites = RetrofitClient.favoriteApi.getFavorites("Bearer $token")
+                            Log.d("LoginActivity", "즐겨찾기 조회 성공: ${favorites.size}개의 기록")
+                            Log.d("LoginActivity", "즐겨찾기 기록: $favorites")
                         } catch (e: Exception) {
-                            Log.e("LoginActivity", "번역 기록 조회 실패: ${e.message}")
+                            Log.e("LoginActivity", "기록 조회 실패: ${e.message}")
                         }
                     }
 

@@ -1,8 +1,6 @@
 package api
 
-import retrofit2.http.Body
-import retrofit2.http.Header
-import retrofit2.http.POST
+import retrofit2.http.*
 
 data class FavoriteRequest(
     val translationHistoryId: Int
@@ -18,4 +16,15 @@ interface FavoriteApi {
         @Header("Authorization") token: String,
         @Body request: FavoriteRequest
     ): FavoriteResponse
+
+    @DELETE("history/favorite/{id}")
+    suspend fun removeFavorite(
+        @Header("Authorization") token: String,
+        @Path("id") historyId: Int
+    ): FavoriteResponse
+
+    @GET("history/favorites")
+    suspend fun getFavorites(
+        @Header("Authorization") token: String
+    ): List<TranslationHistory>
 }

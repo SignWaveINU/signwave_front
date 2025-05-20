@@ -150,59 +150,92 @@ class HistoryActivity : AppCompatActivity() {
     }
 
     private fun updateHistoryItems(histories: List<TranslationHistory>) {
-        val favoritesLayout = findViewById<LinearLayout>(R.id.favoritesLayout)
-        favoritesLayout.removeAllViews() // 기존 뷰 모두 제거
+        try {
+            val favoritesLayout = findViewById<LinearLayout>(R.id.favoritesLayout)
+            favoritesLayout.removeAllViews() // 기존 뷰 모두 제거
+        
+            for (history in histories) {
+                // 새로운 레이아웃 인플레이트
+                val itemView = layoutInflater.inflate(R.layout.history_item, favoritesLayout, false)
     
-        for (history in histories) {
-            // 새로운 레이아웃 인플레이트
-            val itemView = layoutInflater.inflate(R.layout.activity_history, null)
-                .findViewById<LinearLayout>(R.id.favoritesLayout)
-                .getChildAt(0) as LinearLayout
+                // 텍스트 설정
+                val textView = itemView.findViewById<TextView>(R.id.translatedTextView)
+                textView.text = history.translatedText
     
-            // 텍스트 설정
-            val textView = itemView.findViewById<TextView>(R.id.translatedTextView)
-            textView.text = history.translatedText
+                // 시간 설정 - 날짜 형식 변경
+                val timeTextView = itemView.findViewById<TextView>(R.id.timeTextView1)
+                val createdTime = history.createdTime.substring(0, 19) // "2025-05-19T09:01:30" 형식으로 자르기
+                    .replace('T', ' ') // T를 공백으로 변경
+                timeTextView.text = createdTime
     
-            // 시간 설정 - 날짜 형식 변경
-            val timeTextView = itemView.findViewById<TextView>(R.id.timeTextView1)
-            val createdTime = history.createdTime.substring(0, 19) // "2025-05-19T09:01:30" 형식으로 자르기
-                .replace('T', ' ') // T를 공백으로 변경
-            timeTextView.text = createdTime
+                // 즐겨찾기 버튼 상태 설정
+                val imageButton = itemView.findViewById<ImageButton>(R.id.imageButton1)
+                imageButton.setImageResource(if (history.favorite) R.drawable.ic_on_record else R.drawable.ic_record)
     
-            // 즐겨찾기 버튼 상태 설정
-            val imageButton = itemView.findViewById<ImageButton>(R.id.imageButton1)
-            imageButton.setImageResource(if (history.favorite) R.drawable.ic_on_record else R.drawable.ic_record)
-    
-            // 재생 버튼 클릭 리스너 설정
-            val playButton = itemView.findViewById<ImageButton>(R.id.playButton)
-            playButton.setOnClickListener {
-                textToSpeech.speak(history.translatedText, TextToSpeech.QUEUE_FLUSH, null, null)
-            }
-    
-            // 즐겨찾기 버튼 클릭 리스너 설정
-            imageButton.setOnClickListener {
-                lifecycleScope.launch {
-                    try {
-                        val token = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("token", "") ?: ""
-                        RetrofitClient.favoriteApi.addFavorite(
-                            "Bearer $token",
-                            FavoriteRequest(history.translationHistoryId)
-                        )
-                        
-                        runOnUiThread {
-                            imageButton.setImageResource(R.drawable.ic_on_record)
-                            Toast.makeText(this@HistoryActivity, "즐겨찾기에 추가되었습니다", Toast.LENGTH_SHORT).show()
-                        }
-                    } catch (e: Exception) {
-                        Log.e("HistoryActivity", "즐겨찾기 추가 실패: ${e.message}")
-                        runOnUiThread {
-                            Toast.makeText(this@HistoryActivity, "즐겨찾기 추가에 실패했습니다", Toast.LENGTH_SHORT).show()
+                // 재생 버튼 클릭 리스너 설정
+                val playButton = itemView.findViewById<ImageButton>(R.id.playButton)
+                playButton.setOnClickListener {
+                    textToSpeech.speak(history.translatedText, TextToSpeech.QUEUE_FLUSH, null, null)
+                }
+
+                // 삭제 버튼 클릭 리스너 설정
+                val deleteButton = itemView.findViewById<ImageButton>(R.id.deleteButton)
+                deleteButton.setOnClickListener {
+                    lifecycleScope.launch {
+                        try {
+                            val token = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("token", "") ?: ""
+                            RetrofitClient.historyApi.deleteHistory("Bearer $token", history.translationHistoryId)
+                            favoritesLayout.removeView(itemView)
+                            Log.d("HistoryActivity", "번역 기록 삭제 성공")
+                        } catch (e: Exception) {
+                            Log.e("HistoryActivity", "번역 기록 삭제 중 오류 발생: ${e.message}")
                         }
                     }
                 }
-            }
     
-            favoritesLayout.addView(itemView)
+                // 즐겨찾기 버튼 클릭 리스너 설정
+                imageButton.setOnClickListener {
+                    lifecycleScope.launch {
+                        try {
+                            val token = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("token", "") ?: ""
+                            val currentIcon = imageButton.drawable
+                            val isCurrentlyPressed = currentIcon.constantState == resources.getDrawable(R.drawable.ic_on_record).constantState
+                            
+                            if (isCurrentlyPressed) {
+                                // 즐겨찾기 해제
+                                RetrofitClient.favoriteApi.removeFavorite(
+                                    "Bearer $token",
+                                    history.translationHistoryId
+                                )
+                                runOnUiThread {
+                                    imageButton.setImageResource(R.drawable.ic_record)
+                                    Toast.makeText(this@HistoryActivity, "즐겨찾기가 해제되었습니다", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                // 즐겨찾기 추가
+                                RetrofitClient.favoriteApi.addFavorite(
+                                    "Bearer $token",
+                                    FavoriteRequest(history.translationHistoryId)
+                                )
+                                runOnUiThread {
+                                    imageButton.setImageResource(R.drawable.ic_on_record)
+                                    Toast.makeText(this@HistoryActivity, "즐겨찾기에 추가되었습니다", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("HistoryActivity", "즐겨찾기 상태 변경 실패: ${e.message}")
+                            runOnUiThread {
+                                Toast.makeText(this@HistoryActivity, "즐겨찾기 상태 변경에 실패했습니다", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+        
+                favoritesLayout.addView(itemView)
+            }
+        } catch (e: Exception) {
+            Log.e("HistoryActivity", "UI 업데이트 중 오류 발생: ${e.message}")
+            e.printStackTrace()
         }
     }
 

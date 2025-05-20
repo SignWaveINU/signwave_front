@@ -65,19 +65,15 @@ class CalendarActivity : AppCompatActivity() {
                                         .remove("reservation")
                                         .remove("reservationId")
                                         .apply()
-                                    Toast.makeText(this@CalendarActivity, "예약이 삭제되었습니다", Toast.LENGTH_SHORT).show()
                                 }
+                                android.util.Log.d("CalendarActivity", "예약이 성공적으로 삭제되었습니다")
                             } else {
                                 val errorMessage = response.errorBody()?.string() ?: "예약 삭제에 실패했습니다"
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(this@CalendarActivity, errorMessage, Toast.LENGTH_SHORT).show()
-                                }
+                                android.util.Log.e("CalendarActivity", "예약 삭제 실패: $errorMessage")
                             }
                         }
                     } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(this@CalendarActivity, "예약 삭제 중 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
-                        }
+                        android.util.Log.e("CalendarActivity", "예약 삭제 중 오류 발생: ${e.message}")
                     }
                 }
             }
@@ -102,36 +98,44 @@ class CalendarActivity : AppCompatActivity() {
 
         // 캘린더 날짜 선택 리스너 설정
         calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
-            selectedDate = "${year}-${month + 1}-${dayOfMonth}" // 날짜 형식 변경
-            showTimePickerDialog(year, month, dayOfMonth) // 선택한 날짜 전달
+            selectedDate = "${month + 1}월 ${dayOfMonth}일"
+            showTimePickerDialog()
         }
     }
 
-    private fun showTimePickerDialog(year: Int, month: Int, dayOfMonth: Int) {
+    private fun showTimePickerDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_time_pick, null)
         val hospitalName = dialogView.findViewById<EditText>(R.id.hospitalName)
         val timePicker = dialogView.findViewById<TimePicker>(R.id.timePicker)
         val btnConfirm = dialogView.findViewById<Button>(R.id.btnConfirm)
-    
+
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .create()
-    
+
         btnConfirm.setOnClickListener {
             val hospital = hospitalName.text.toString()
             val hour = timePicker.hour
             val minute = timePicker.minute
-    
-            // API 요청을 위한 날짜 형식 변환
+
+            // 선택된 날짜 사용
             val calendar = Calendar.getInstance()
-            calendar.set(year, month, dayOfMonth, hour, minute) // 선택한 날짜와 시간 설정
-    
+            val selectedDateParts = selectedDate.split("월 ", "일")
+            if (selectedDateParts.size >= 2) {
+                val month = selectedDateParts[0].toInt() - 1  // 월은 0부터 시작
+                val day = selectedDateParts[1].toInt()
+                calendar.set(Calendar.MONTH, month)
+                calendar.set(Calendar.DAY_OF_MONTH, day)
+            }
+            calendar.set(Calendar.HOUR_OF_DAY, hour)
+            calendar.set(Calendar.MINUTE, minute)
+
             val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             val timeFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-    
+
             val reservationDate = dateFormat.format(calendar.time)
             val reservationTime = timeFormat.format(calendar.time)
-    
+
             lifecycleScope.launch {
                 try {
                     withContext(Dispatchers.IO) {
@@ -142,13 +146,13 @@ class CalendarActivity : AppCompatActivity() {
                             reservationTime = reservationTime
                         )
                         val response = RetrofitClient.reservationApi.createReservation("Bearer $token", request)
-    
+
                         if (response.isSuccessful) {
                             val reservationResponse = response.body()
                             withContext(Dispatchers.Main) {
                                 // API 응답으로 텍스트뷰 업데이트
                                 val timeString = String.format("%02d:%02d", hour, minute)
-                                val finalText = "${reservationResponse?.reservationDate} $timeString ${reservationResponse?.hospitalName}데이터를 예약"
+                                val finalText = "${reservationResponse?.reservationDate} $timeString ${reservationResponse?.hospitalName} 예약"
                                 reservationText.text = finalText
                                 deleteButton.visibility = View.VISIBLE
                                 
@@ -169,10 +173,11 @@ class CalendarActivity : AppCompatActivity() {
                     android.util.Log.e("CalendarActivity", "예약 생성 중 오류 발생: ${e.message}")
                 }
             }
-    
+
             dialog.dismiss()
         }
-    
+
+
         dialog.show()
     }
 }

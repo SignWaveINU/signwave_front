@@ -11,7 +11,6 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import api.LandmarkData
 import api.RetrofitClient
 import api.TTSRequest
 import com.google.mediapipe.solutioncore.CameraInput
@@ -28,9 +27,12 @@ import com.karumi.dexter.listener.single.PermissionListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.util.Locale
-import android.media.MediaPlayer
 import java.io.File
+import java.util.Locale
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+
 
 class HomeActivity : AppCompatActivity(){
     private lateinit var hands: Hands
@@ -40,6 +42,11 @@ class HomeActivity : AppCompatActivity(){
     private lateinit var token: String
     private lateinit var translationText: TextView
     private lateinit var textToSpeech: TextToSpeech
+
+    // API 호출 제한을 위한 변수들
+    private var lastApiCallTime = 0L
+    private val apiCallInterval = 2000L // 2초 간격으로 API 호출 제한
+    private var isProcessing = false
 
     private val REQUIRED_PERMISSIONS = mutableListOf(
         Manifest.permission.INTERNET,
@@ -146,9 +153,9 @@ class HomeActivity : AppCompatActivity(){
         cameraInput.setNewFrameListener { hands.send(it) }
 
         // handsResultGlRenderer 초기화
-        handsResultGlRenderer = HandsResultGlRenderer(this) { landmarkData ->
+        handsResultGlRenderer = HandsResultGlRenderer(this) { landmarkData, jsonFilePath ->
             // API 호출
-            sendLandmarkDataToServer(landmarkData)
+            sendLandmarkDataToServer(landmarkData, jsonFilePath)
         }
 
         glSurfaceView = SolutionGlSurfaceView(this@HomeActivity, hands.glContext, hands.glMajorVersion)
@@ -185,98 +192,77 @@ class HomeActivity : AppCompatActivity(){
         // UI 초기화 코드 (필요한 경우 추가)
     }
 
-    private fun sendLandmarkDataToServer(landmarkData: LandmarkData) {
+    private fun sendLandmarkDataToServer(landmarkData: Any, csvFilePath: String?) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // landmarkData 로그 출력
-                Log.d("TAG", "landmarkData: $landmarkData")
-                
-                val response = RetrofitClient.instance.submitLandmarks("Bearer $token", landmarkData)
+                // 토큰 검증
+                if (token.isEmpty()) {
+                    Log.e("TAG", "토큰이 비어있습니다")
+                    return@launch
+                }
+
+                val authHeader = "Bearer $token"
+                Log.d("TAG", "인증 헤더: $authHeader")
+
+                // CSV 파일을 사용하여 API 호출
+                val csvFile = File(csvFilePath)
+                val requestBody = csvFile.asRequestBody("text/csv".toMediaTypeOrNull())
+                val csvPart = MultipartBody.Part.createFormData("file", csvFile.name, requestBody)
+
+                val response = RetrofitClient.instance.submitLandmarks(authHeader, csvPart)
                 if (response.isSuccessful) {
                     val submitResponse = response.body()
                     val translatedText = submitResponse?.sentence ?: "번역된 내용이 없습니다."
-
-                    // 번역 기록 조회 API 호출 추가
-                    try {
-                        val historyResponse = RetrofitClient.historyApi.getTranslationHistory("Bearer $token")  // 토큰 추가
-                        Log.d("History", "번역 기록: $historyResponse")
-                        
-                        // 가장 최근 번역 기록 사용
-                        if (historyResponse.isNotEmpty()) {
-                            val latestHistory = historyResponse[0]
-                            // audioUrl이 있다면 이를 사용할 수 있습니다
-                            Log.d("History", "최근 번역: ${latestHistory.translatedText}, 시간: ${latestHistory.createdTime}")
-                        }
-                    } catch (e: Exception) {
-                        Log.e("History", "번역 기록 조회 실패: ${e.message}")
-                    }
-
-                    // 기존 TTS 로직 유지
-                    try {
-                        val ttsResponse = RetrofitClient.ttsApi.generateTTS(
-                            "Bearer $token",
-                            TTSRequest(sentence = translatedText)
-                        )
-                        
-                        if (ttsResponse.isSuccessful) {
-                            val ttsResult = ttsResponse.body()
-                            val audioBase64 = ttsResult?.audio_base64
-                            Log.d("TTS", "audioBase64: $audioBase64") // 이 로그 추가
-                            
-                            if (audioBase64 != null) {
-                                // base64 오디오 데이터를 바이트 배열로 변환
-                                val audioBytes = android.util.Base64.decode(audioBase64, android.util.Base64.DEFAULT)
-                                Log.d("TTS", "audioBytes length: ${audioBytes.size}") // 이 로그 추가
-                                // 메인 스레드에서 오디오 재생
-                                runOnUiThread {
-                                    try {
-                                        // 임시 파일 생성
-                                        val tempFile = File.createTempFile("tts_audio", ".mp3", cacheDir)
-                                        tempFile.writeBytes(audioBytes)
-                                        
-                                        // MediaPlayer로 재생
-                                        val mediaPlayer = MediaPlayer().apply {
-                                            setDataSource(tempFile.path)
-                                            prepare()
-                                            start()
-                                            
-                                            // 재생 완료 후 리소스 정리
-                                            setOnCompletionListener { mp ->
-                                                mp.release()
-                                                tempFile.delete()
-                                            }
-                                        }
-                                    } catch (e: Exception) {
-                                        Log.e("TTS", "오디오 재생 중 오류 발생: ${e.message}")
-                                    }
-                                }
-                            } else {
-                                Log.e("TTS", "audioBase64가 null입니다")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e("TAG", "TTS API 호출 중 오류 발생: ${e.message}")
-                    }
-
-                    // SharedPreferences에 저장
-                    val sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
-                    with(sharedPreferences.edit()) {
-                        putString("translatedText", translatedText)
-                        apply()
-                    }
 
                     // UI 업데이트는 메인 스레드에서 수행
                     runOnUiThread {
                         val translationTextView: TextView = findViewById(R.id.translationText)
                         translationTextView.text = translatedText
-                        // 번역된 텍스트가 업데이트될 때 자동으로 TTS 실행
-                        if (translatedText.isNotEmpty()) {
-                            textToSpeech.speak(translatedText, TextToSpeech.QUEUE_FLUSH, null, null)
+                        Toast.makeText(this@HomeActivity, "손 동작이 번역되었습니다.", Toast.LENGTH_SHORT).show()
+                        
+                        // 바로 TTS 실행
+                        textToSpeech.speak(translatedText, TextToSpeech.QUEUE_FLUSH, null, null)
+                    }
+
+                    // TTS API 호출
+                    try {
+                        val ttsRequest = TTSRequest(sentence = translatedText)
+                        RetrofitClient.ttsApi.generateTTS(authHeader, ttsRequest)
+                    } catch (e: Exception) {
+                        Log.e("TAG", "TTS API 호출 중 오류 발생: ${e.message}")
+                    }
+
+                    // 2. 번역이 성공한 후에 번역 기록 조회 (3초 지연 후)
+                    kotlinx.coroutines.delay(3000) // 3초 지연
+                    try {
+                        val historyResponse = RetrofitClient.historyApi.getTranslationHistory(authHeader)
+                        if (historyResponse.isNotEmpty()) {
+                            val latestHistory = historyResponse[0]
+                            if (latestHistory.translatedText == translatedText) {
+                                // 번역된 텍스트가 기록에 정상적으로 저장됨
+                            }
                         }
-                        Toast.makeText(this@HomeActivity, "번역된 텍스트가 저장되었습니다.", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        // 예외 처리
                     }
                 } else {
-                    Log.e("TAG", "API 호출 실패: ${response.errorBody()?.string()}")
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("TAG", "API 호출 실패: $errorBody")
+                    Log.e("TAG", "응답 코드: ${response.code()}")
+                    Log.e("TAG", "응답 메시지: ${response.message()}")
+
+                    // 403 에러인 경우 토큰 재확인
+                    if (response.code() == 403) {
+                        Log.e("TAG", "403 Forbidden - 토큰이 만료되었거나 잘못되었을 수 있습니다")
+                        // SharedPreferences에서 토큰 재확인
+                        val currentToken = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+                            .getString("token", "") ?: ""
+                        Log.e("TAG", "현재 저장된 토큰: $currentToken")
+                    }
+
+                    runOnUiThread {
+                        Toast.makeText(this@HomeActivity, "API 호출 실패: ${response.code()}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("TAG", "API 호출 중 오류 발생: ${e.message}")

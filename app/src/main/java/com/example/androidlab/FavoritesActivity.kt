@@ -8,10 +8,21 @@ import android.widget.Button
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import android.speech.tts.TextToSpeech
 import java.util.Locale
+import api.RetrofitClient
+import api.TranslationHistory
+import api.FavoriteRequest
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+
+data class FavoriteResponse(
+    val success: Boolean,
+    val message: String
+)
 
 class FavoritesActivity : AppCompatActivity() {
     private lateinit var favoritesLayout: LinearLayout
@@ -38,18 +49,8 @@ class FavoritesActivity : AppCompatActivity() {
             }
         }
 
-        // SharedPreferences에서 저장된 텍스트 확인
-        val sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
-        sharedPreferences.getString("favorite_text", null)?.let { text ->
-            addNewItem(text)
-            // 사용 후 삭제
-            sharedPreferences.edit().remove("favorite_text").apply()
-        }
-
-        // 전달받은 텍스트가 있다면 즐겨찾기에 추가
-        intent.getStringExtra("favorite_text")?.let { text ->
-            addNewItem(text)
-        }
+        // 즐겨찾기 기록 조회
+        fetchFavorites()
 
         // 홈 버튼 클릭 리스너 추가
         val homeButton: ImageButton = findViewById(R.id.homeButton)
@@ -74,32 +75,30 @@ class FavoritesActivity : AppCompatActivity() {
 
         // 추가 버튼 클릭 리스너 추가
         val addButton: ImageButton = findViewById(R.id.addButton)
-        favoritesLayout = findViewById(R.id.favoritesLayout)
-
         addButton.setOnClickListener {
-            // 다이얼로그 생성
-            val builder = AlertDialog.Builder(this)
-            val dialogView = layoutInflater.inflate(R.layout.dialog_input, null)
-            builder.setView(dialogView)
-
-            val inputText = dialogView.findViewById<EditText>(R.id.inputText)
-            val submitButton = dialogView.findViewById<Button>(R.id.submitButton)
-
-            val dialog = builder.create()
-
-            submitButton.setOnClickListener {
-                val userInput = inputText.text.toString()
-                // 사용자 입력 처리
-                addNewItem(userInput)
-                dialog.dismiss()
-            }
-
-            dialog.show()
+            Toast.makeText(this, "번역 기록에서 즐겨찾기를 추가해주세요.", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun addNewItem(text: String) {
-        // 새로운 항목 추가
+    private fun fetchFavorites() {
+        lifecycleScope.launch {
+            try {
+                val token = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("token", "") ?: ""
+                val favorites = RetrofitClient.favoriteApi.getFavorites("Bearer $token")
+                Log.d("FavoritesActivity", "즐겨찾기 조회 성공: ${favorites.size}개의 기록")
+                
+                favoritesLayout.removeAllViews()
+                
+                for (favorite in favorites) {
+                    addNewItem(favorite.translatedText, favorite.translationHistoryId)
+                }
+            } catch (e: Exception) {
+                Log.e("FavoritesActivity", "즐겨찾기 조회 실패: ${e.message}")
+            }
+        }
+    }
+
+    private fun addNewItem(text: String, historyId: Int) {
         val newItemLayout = layoutInflater.inflate(R.layout.item_favorite, favoritesLayout, false)
         val textView: TextView = newItemLayout.findViewById(R.id.editText)
         val playButton: ImageButton = newItemLayout.findViewById(R.id.playButton)
@@ -108,15 +107,21 @@ class FavoritesActivity : AppCompatActivity() {
         textView.text = text
         textView.isEnabled = false
 
-        // 재생 버튼 클릭 리스너 추가
         playButton.setOnClickListener {
-            speakOut(text) // 텍스트를 음성으로 읽기
+            speakOut(text)
         }
 
-        // 삭제 버튼 클릭 시: 레이아웃에서 제거
         deleteButton.setOnClickListener {
-            Log.d("FavoritesActivity", "삭제 버튼 클릭됨")
-            favoritesLayout.removeView(newItemLayout) // UI에서 제거
+            lifecycleScope.launch {
+                try {
+                    val token = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("token", "") ?: ""
+                    RetrofitClient.favoriteApi.removeFavorite("Bearer $token", historyId)
+                    favoritesLayout.removeView(newItemLayout)
+                    Log.d("FavoritesActivity", "즐겨찾기 삭제 성공")
+                } catch (e: Exception) {
+                    Log.e("FavoritesActivity", "즐겨찾기 삭제 중 오류 발생: ${e.message}")
+                }
+            }
         }
 
         favoritesLayout.addView(newItemLayout)
